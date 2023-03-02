@@ -14,4 +14,7 @@ latent_df = pd.read_csv('mnist_latent.csv')
 y = np.load('y.npy')
 latent = latent_df.iloc[:,3:].to_numpy() 
 
-trainer = Trainer(y,latent,loss_type='MSE',gradient_type = 'SGD')
+gradient_types = ['Constrained GD','GD','SGD','regularized GD']
+for gradient_type in gradient_types:
+    trainer = Trainer(y,latent,loss_type='MSE',gradient_type = gradient_type)
+    trainer.fit()
