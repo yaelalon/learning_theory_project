@@ -94,9 +94,9 @@ class Trainer:
             
         self.x = latent
         self.seed = 0
-        y[y<5] = 0
-        y[y>=5] = 1
         self.y = y
+        self.y[y<5] = 0
+        self.y[y>=5] = 1
         
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(self.x, self.y, test_size=0.20, random_state=self.seed)
         self.batch_size = batch_size
@@ -121,11 +121,11 @@ class Trainer:
             max_val = 100
             
         plt.figure(figsize=(8, 8))
-        plt.title("Learning curve - " + measure_str)
+        plt.title("Learning curve - %s, %s with %s loss and lrate = %.4f" %(measure_str,self.gradient_type,self.loss_type,self.learning_rate))
         plt.plot(train_history, label="Train " + measure_str)
         plt.plot(dev_history, label="Val " + measure_str)
         plt.plot(best_loss_epoch, dev_history[best_loss_epoch], marker="x", color="r", label="best model")
-        plt.xlabel("Epochs")
+        plt.xlabel("# Epoch")
         plt.ylabel(y_title)
         plt.ylim(0,max_val)
         plt.legend();
@@ -151,7 +151,7 @@ class Trainer:
             else:
                 self.model.weights = self.proj_operator(temp_weights)
         elif self.gradient_type == 'regularized GD':
-            self.model.weights -= self.learning_rate*(self.mean_gradient+self.lambda_val*self.model.weights)
+            self.model.weights -= self.learning_rate*(torch.from_numpy(self.mean_gradient)+self.lambda_val*self.model.weights)
 
     def mean_list(self,list):
         #list = [item.astype('float') for item in list if not np.isnan(item)]
