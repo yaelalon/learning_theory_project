@@ -88,7 +88,12 @@ class Trainer:
             raise('%s not it loss type options' %(self.loss_type))
             return
         
-        self.save_path = os.path.join(os.path.dirname(os.getcwd()),'%s_%s_lrate%.4f' %(self.gradient_type,self.loss_type,learning_rate))
+        self.save_path = os.path.join(os.path.dirname(os.getcwd()),'Results','%s_%s_lrate%.4f' %(self.gradient_type,self.loss_type,learning_rate))
+        if self.gradient_type == 'Constrained GD':
+            self.save_path += '_B%.2f' %(B)
+        if self.gradient_type == 'regularized GD':
+            self.save_path += '_lambda%.4f' %(lambda_val)
+            
         if not os.path.isdir(self.save_path):
             os.mkdir(self.save_path)
             
@@ -121,35 +126,29 @@ class Trainer:
             max_val = 100
             
         plt.figure(figsize=(8, 8))
-        plt.title("Learning curve - %s, %s with %s loss and lrate = %.4f" %(measure_str,self.gradient_type,self.loss_type,self.learning_rate))
+        plt.title("Learning curve - %s, %s with %s loss and lrate = %.4f" %(measure_str,self.gradient_type,self.loss_type,self.learning_rate), fontsize=16)
         plt.plot(train_history, label="Train " + measure_str)
         plt.plot(dev_history, label="Val " + measure_str)
         plt.plot(best_loss_epoch, dev_history[best_loss_epoch], marker="x", color="r", label="best model")
-        plt.xlabel("# Epoch")
-        plt.ylabel(y_title)
+        plt.xlabel("# Epoch", fontsize=16)
+        plt.ylabel(y_title, fontsize=16)
         plt.ylim(0,max_val)
         plt.legend();
         plt.grid()
         plt.savefig(self.save_path + '\\Learning curve - ' + measure_str + '.jpg')
         
     def proj_operator(self,w):
-        B = np.eye(100)
-        proj_v = np.zeros_like(w)
-        for b in B.T:
-            b = np.expand_dims(b, axis=0)
-            proj_v += np.dot(b,w.numpy())[0][0] * b.T
-        return torch.from_numpy(proj_v)
+        w_norm = np.linalg.norm(w)
+        if w_norm > self.B:
+            w = w * self.B / w_norm
+        return w
 
     def weight_update(self):
         if self.gradient_type == 'GD' or self.gradient_type == 'SGD':
             self.model.weights -= self.mean_gradient*self.learning_rate
         elif self.gradient_type == 'Constrained GD':
             temp_weights = self.model.weights.detach().clone() - self.mean_gradient*self.learning_rate
-            norm_v = np.linalg.norm(temp_weights)
-            if norm_v <= self.B:
-                self.model.weights -= self.mean_gradient*self.learning_rate
-            else:
-                self.model.weights = self.proj_operator(temp_weights)
+            self.model.weights = self.proj_operator(temp_weights)
         elif self.gradient_type == 'regularized GD':
             self.model.weights -= self.learning_rate*(torch.from_numpy(self.mean_gradient)+self.lambda_val*self.model.weights)
 
@@ -170,7 +169,6 @@ class Trainer:
     def fit(self):
         print('Classification of mnist data set with %s, %s loss and %.5f learning rate' %(self.gradient_type,self.loss_type,self.learning_rate))
         print_every = 10000
-        flag = False
         self.train_loss = []
         self.train_acc = []
         self.dev_loss = []

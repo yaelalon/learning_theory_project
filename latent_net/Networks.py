@@ -18,14 +18,14 @@ from sklearn.metrics import accuracy_score
 import pandas as pd
 
 class LatentModel(nn.Module):
-    def __init__(self):
+    def __init__(self,f=1):
         super(LatentModel, self).__init__()
         self.num_latent_features = 100
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
+        self.conv1 = nn.Conv2d(1, round(32*f), 3, 1)
+        self.conv2 = nn.Conv2d(round(32*f), round(64*f), 3, 1)
         self.dropout1 = nn.Dropout(0.5)
         self.dropout2 = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(9216, self.num_latent_features)
+        self.fc1 = nn.Linear(12*12*round(64*f), self.num_latent_features)
         self.fc2 = nn.Linear(self.num_latent_features, 10)     
     
     def forward(self, x):
@@ -47,7 +47,7 @@ class TrainLatentNetwork():
     def __init__(self,latent_model):
         self.latent_model = latent_model
         self.batch_size = 64
-        self.num_epochs = 2
+        self.num_epochs = 10
         self.lrate = 0.0001
         self.folder_model = os.path.join(os.getcwd(),'latent_net')
         if not os.path.isdir(self.folder_model):
@@ -67,12 +67,12 @@ class TrainLatentNetwork():
     def save_results_plot(self,train_history,dev_history,epoch,best_loss_epoch,measure_str,y_title):
         max_val = max(train_history + dev_history) + 0.5
         plt.figure(figsize=(8, 8))
-        plt.title("Learning curve - " + measure_str)
+        plt.title("Learning curve - " + measure_str, fontsize=16)
         plt.plot(train_history, label="Train " + measure_str)
         plt.plot(dev_history, label="Val " + measure_str)
         plt.plot(best_loss_epoch, dev_history[best_loss_epoch], marker="x", color="r", label="best model")
-        plt.xlabel("Epochs")
-        plt.ylabel(y_title)
+        plt.xlabel("Epochs", fontsize=16)
+        plt.ylabel(y_title, fontsize=16)
         plt.ylim(0,max_val)
         plt.legend();
         plt.grid()
@@ -160,12 +160,16 @@ class TrainLatentNetwork():
             
             if dev_loss<best_loss_epoch:
                 best_loss_epoch = dev_loss
+                best_loss_train = train_loss_history[-1]
                 best_epoch = epoch
+                self.best_acc = dev_acc_history[-1]
                 #torch.save(net.state_dict(), self.folder_model + '\\' + 'BestDev.p')
             
             print("Validation set - Epoch %d : loss = %.2f, acc = %.0f%s" %(epoch,dev_loss,dev_acc_history[-1],'%'))
             self.save_results_plot(dev_loss_history,train_loss_history,epoch,best_epoch,'loss','loss')
             self.save_results_plot(dev_acc_history,train_acc_history,epoch,best_epoch,'acc','%')
+            self.best_loss_epoch = best_loss_epoch
+            self.best_loss_train = best_loss_train
             
     def eval_mnist_latent(self, save_path):
         batch_size = 256
